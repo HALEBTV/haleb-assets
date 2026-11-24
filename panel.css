@@ -1,0 +1,31 @@
+*{box-sizing:border-box}
+body{margin:0;background:#eef2fb;color:#1b2440;font-family:Tahoma,Arial,sans-serif;font-size:15px}
+.wrap{max-width:760px;margin:0 auto;padding:12px}
+h1{margin:6px 0 12px;color:#c4121c;font-size:22px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px 4px;border:0;border-radius:12px;background:#dfe7f7;color:#1b2440;font-size:14px}
+.tabs button.on{background:#c4121c;color:#fff}
+.bar{display:flex;gap:8px;margin-bottom:12px}
+input[type=text],input[type=password],input[type=date],input[type=number],input[type=datetime-local]{width:100%;padding:10px;border:1px solid #c9d4ec;border-radius:12px;background:#fff;color:#1b2440;font-size:15px}
+.mono{font-family:monospace;direction:ltr;text-align:left}
+label{display:block;font-size:12px;color:#5b6a8f;margin:8px 4px 4px}
+button{cursor:pointer}
+.btn{padding:10px 14px;border:0;border-radius:12px;background:#dfe7f7;color:#1b2440;font-size:15px}
+.btn.pri{background:#c4121c;color:#fff}
+.btn.sm{padding:8px 11px;font-size:16px}
+.btn.x{color:#c4121c}
+.card{background:#e4ecfa;border:1px solid #cdd8f0;border-radius:22px;padding:14px;margin-bottom:14px}
+.head{display:flex;align-items:center;gap:6px}
+.num{min-width:42px;height:42px;border-radius:12px;background:#cdd9f2;display:flex;align-items:center;justify-content:center;font-weight:bold}
+.logo{width:42px;height:42px;border-radius:50%;background:#c4121c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;overflow:hidden;flex:none}
+.logo img{width:100%;height:100%;object-fit:cover}
+.names{flex:1;min-width:0}
+.names b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.names small{color:#5b6a8f}
+.pill{padding:5px 10px;border-radius:20px;background:#bfe6c9;color:#0a5a2a;font-size:12px;white-space:nowrap}
+.pill.off{background:#e6c4c4;color:#7a1515}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid #cdd8f0;font-size:13px;color:#5b6a8f}
+.sw{display:flex;align-items:center;gap:8px;margin:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mac{font-family:monospace;font-weight:bold;direction:ltr;text-align:left}
+.msg{position:fixed;bottom:16px;left:16px;right:16px;background:#1b2440;color:#fff;padding:12px;border-radius:14px;text-align:center;display:none}
