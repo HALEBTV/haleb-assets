@@ -1,7 +1,7 @@
 var API = "https://haleb-panel.bdwa046.workers.dev";
 var PW = localStorage.getItem("pw") || "";
-var S = [], D = [], M = [], C = {}, MSG = "", Q = "", T = 1;
-var TABS = ["السيرفرات", "الأجهزة", "المباريات", "الإعدادات"];
+var S = [], D = [], C = {}, MSG = "", Q = "", T = 1;
+var TABS = ["السيرفرات", "الأجهزة", "الإعدادات"];
 var HN = ["الهوست الأساسي", "البديل الثاني", "البديل الثالث", "البديل الرابع", "البديل الخامس"];
 
 function $(id) { return document.getElementById(id); }
@@ -34,7 +34,7 @@ function tabs() {
   }).join("");
 }
 function go(n) { T = n; tabs(); draw(); }
-function draw() { if (T == 1) rS(); else if (T == 2) rD(); else if (T == 3) rM(); else rC(); }
+function draw() { if (T == 1) rS(); else if (T == 2) rD(); else rC(); }
 function logout() { localStorage.removeItem("pw"); location.reload(); }
 
 function login() { PW = $("pw").value; localStorage.setItem("pw", PW); loadAll(); }
@@ -49,10 +49,9 @@ function loadAll() {
     D = r[1];
     C = r[2];
     MSG = "";
-    M = [];
     try {
       var o = JSON.parse(C.message || "");
-      if (o && typeof o === "object") { MSG = o.m || ""; M = o.matches || []; } else { MSG = C.message; }
+      if (o && typeof o === "object") { MSG = o.m || ""; } else { MSG = C.message; }
     } catch (e) { MSG = C.message || ""; }
     $("login").style.display = "none";
     $("main").style.display = "block";
@@ -156,29 +155,6 @@ function ext(i, n) {
 }
 function saveD(i) { api("/api/admin/devices", "PUT", D[i]).then(function () { say("تم حفظ الجهاز"); }).catch(fail); }
 
-function toLocal(iso) {
-  if (!iso) return "";
-  var d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + "T" + p2(d.getHours()) + ":" + p2(d.getMinutes());
-}
-function setStart(i, v) { M[i].start = v ? new Date(v).toISOString() : ""; }
-function fM(i, k, lab) {
-  return '<label>' + lab + '</label><input type="text" value="' + esc(M[i][k]) + '" oninput="M[' + i + '].' + k + '=this.value">';
-}
-function rM() {
-  var h = '<div class="card">تظهر أقرب 3 مباريات في الرئيسية، وتختفي المباراة بعد 3 ساعات من موعدها.</div>';
-  M.forEach(function (m, i) {
-    h += '<div class="card"><b>#' + (i + 1) + '</b>' + fM(i, "league", "الدوري") + fM(i, "home", "الفريق الأول") + fM(i, "away", "الفريق الثاني") +
-      '<label>الموعد (بتوقيت جهازك)</label><input type="datetime-local" value="' + esc(toLocal(m.start)) + '" onchange="setStart(' + i + ',this.value)">' +
-      '<div class="foot"><span></span><button class="btn x" onclick="delM(' + i + ')">حذف</button></div></div>';
-  });
-  h += '<div class="row"><button class="btn" onclick="addM()">+ مباراة</button><button class="btn pri" onclick="saveC()">حفظ</button></div>';
-  $("view").innerHTML = h;
-}
-function addM() { M.push({ league: "", home: "", away: "", start: "" }); rM(); }
-function delM(i) { if (confirm("حذف هذه المباراة؟")) { M.splice(i, 1); rM(); } }
-
 function fc(k, lab, t) {
   return '<label>' + lab + '</label><input type="' + t + '" value="' + esc(C[k]) + '" oninput="C.' + k + '=this.value">';
 }
@@ -189,15 +165,10 @@ function rC() {
     '<div class="row" style="margin-top:12px"><button class="btn pri" onclick="saveC()">حفظ الإعدادات</button><button class="btn" onclick="logout()">خروج</button></div></div>';
 }
 function saveC() {
-  for (var i = 0; i < M.length; i++) {
-    if (!M[i].start) { say("حدّد موعد كل مباراة"); return; }
-  }
+  // "matches" stays in the stored message as an empty list: old app versions read that key
   var body = {
     version: C.version, updateUrl: C.updateUrl, trialDays: C.trialDays, speedTestUrl: C.speedTestUrl,
-    message: JSON.stringify({
-      m: MSG,
-      matches: M.map(function (x) { return { league: x.league, home: x.home, away: x.away, start: x.start }; })
-    })
+    message: JSON.stringify({ m: MSG, matches: [] })
   };
   api("/api/admin/config", "PUT", body).then(function () { say("تم الحفظ"); }).catch(fail);
 }
