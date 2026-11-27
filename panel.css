@@ -29,3 +29,4 @@ button{cursor:pointer}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .mac{font-family:monospace;font-weight:bold;direction:ltr;text-align:left}
 .msg{position:fixed;bottom:16px;left:16px;right:16px;background:#1b2440;color:#fff;padding:12px;border-radius:14px;text-align:center;display:none}
+.pl{background:#f3f6fd;border:1px solid #cdd8f0;border-radius:14px;padding:8px;margin-top:8px}

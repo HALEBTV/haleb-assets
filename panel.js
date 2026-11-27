@@ -1,6 +1,6 @@
 var API = "https://haleb-panel.bdwa046.workers.dev";
 var PW = localStorage.getItem("pw") || "";
-var S = [], D = [], C = {}, MSG = "", Q = "", T = 1;
+var S = [], D = [], C = {}, MSG = "", Q = "", DQ = "", T = 1;
 var TABS = ["السيرفرات", "الأجهزة", "الإعدادات"];
 var HN = ["الهوست الأساسي", "البديل الثاني", "البديل الثالث", "البديل الرابع", "البديل الخامس"];
 
@@ -131,29 +131,76 @@ function saveS() {
   api("/api/admin/servers", "PUT", out).then(function () { say("تم حفظ السيرفرات"); }).catch(fail);
 }
 
-function rD() {
+function newId() { return Math.random().toString(36).slice(2, 8); }
+
+// the M3U subscriptions of one device: a name (shown to the customer in the app) and a link each
+function plBlock(i) {
   var h = "";
-  if (!D.length) h = '<div class="card">لا توجد أجهزة بعد.</div>';
-  D.forEach(function (d, i) {
-    var days = Math.ceil((new Date(d.expiry).getTime() - Date.now()) / 86400000);
-    var st = d.active === false ? '<span class="pill off">موقوف</span>' : (days < 0 ? '<span class="pill off">منتهٍ</span>' : '<span class="pill">' + days + ' يوم</span>');
-    h += '<div class="card"><div class="head"><div class="mac names">' + esc(d.mac) + '</div>' + st + '</div>' +
-      '<label>Device Key: ' + esc(d.key) + '</label>' +
-      '<label>انتهاء التفعيل</label><input type="date" value="' + esc((d.expiry || "").slice(0, 10)) + '" onchange="setExp(' + i + ',this.value)">' +
-      '<label>ملاحظة (اسم الزبون)</label><input type="text" value="' + esc(d.note) + '" oninput="D[' + i + '].note=this.value">' +
-      '<div class="foot"><label class="sw"><input type="checkbox" ' + (d.active !== false ? "checked" : "") + ' onchange="D[' + i + '].active=this.checked"> مفعّل</label>' +
-      '<span class="row"><button class="btn" onclick="ext(' + i + ',30)">+30</button><button class="btn" onclick="ext(' + i + ',365)">+سنة</button>' +
-      '<button class="btn pri" onclick="saveD(' + i + ')">حفظ</button></span></div></div>';
+  (D[i].playlists || []).forEach(function (p, j) {
+    h += '<div class="pl"><input type="text" placeholder="اسم الاشتراك (يظهر للزبون)" value="' + esc(p.name) + '" oninput="D[' + i + '].playlists[' + j + '].name=this.value">' +
+      '<div class="row" style="margin-top:6px;flex-wrap:nowrap"><input class="mono" type="text" placeholder="http://...get.php?username=...&password=..." value="' + esc(p.url) + '" oninput="D[' + i + '].playlists[' + j + '].url=this.value" style="flex:1;min-width:0">' +
+      '<button class="btn sm x" onclick="delPL(' + i + ',' + j + ')">✕</button></div></div>';
   });
-  $("view").innerHTML = h;
+  return h;
+}
+function addPL(i) {
+  if (!D[i].playlists) D[i].playlists = [];
+  D[i].playlists.push({ id: newId(), name: "", url: "" });
+  $("pl" + i).innerHTML = plBlock(i);
+}
+function delPL(i, j) {
+  if (!confirm("حذف هذا الاشتراك من الجهاز؟")) return;
+  D[i].playlists.splice(j, 1);
+  $("pl" + i).innerHTML = plBlock(i);
+}
+
+function cardD(d, i) {
+  var days = Math.ceil((new Date(d.expiry).getTime() - Date.now()) / 86400000);
+  var st = d.active === false ? '<span class="pill off">موقوف</span>' : (days < 0 ? '<span class="pill off">منتهٍ</span>' : '<span class="pill">' + days + ' يوم</span>');
+  var n = (d.playlists || []).length;
+  return '<div class="card"><div class="head"><div class="mac names">' + esc(d.mac) + '</div>' + (n ? '<span class="pill">M3U ' + n + '</span>' : '') + st + '</div>' +
+    '<label>Device Key: ' + esc(d.key) + '</label>' +
+    '<label>انتهاء التفعيل</label><input type="date" value="' + esc((d.expiry || "").slice(0, 10)) + '" onchange="setExp(' + i + ',this.value)">' +
+    '<label>ملاحظة (اسم الزبون)</label><input type="text" value="' + esc(d.note) + '" oninput="D[' + i + '].note=this.value">' +
+    '<label>اشتراكات M3U (تظهر للزبون أول القائمة ويدخلها بضغطة واحدة)</label>' +
+    '<div id="pl' + i + '">' + plBlock(i) + '</div>' +
+    '<div class="row" style="margin-top:8px"><button class="btn" onclick="addPL(' + i + ')">+ إضافة اشتراك M3U</button></div>' +
+    '<div class="foot"><label class="sw"><input type="checkbox" ' + (d.active !== false ? "checked" : "") + ' onchange="D[' + i + '].active=this.checked"> مفعّل</label>' +
+    '<span class="row"><button class="btn" onclick="ext(' + i + ',30)">+30</button><button class="btn" onclick="ext(' + i + ',365)">+سنة</button>' +
+    '<button class="btn pri" onclick="saveD(' + i + ')">حفظ</button></span></div></div>';
+}
+function rD() {
+  $("view").innerHTML = '<div class="bar"><input type="text" id="dq" placeholder="ابحث بالماك أو الاسم أو المفتاح..." value="' + esc(DQ) + '" oninput="DQ=this.value;listD()"></div><div id="dlist"></div>';
+  listD();
+}
+function listD() {
+  var q = DQ.trim().toLowerCase(), h = "";
+  D.forEach(function (d, i) {
+    var names = (d.playlists || []).map(function (p) { return p.name; }).join(" ");
+    var hay = ((d.mac || "") + " " + (d.key || "") + " " + (d.note || "") + " " + names).toLowerCase();
+    if (q && hay.indexOf(q) < 0) return;
+    h += cardD(d, i);
+  });
+  $("dlist").innerHTML = h || '<div class="card">' + (D.length ? "لا توجد نتائج" : "لا توجد أجهزة بعد.") + '</div>';
 }
 function setExp(i, v) { if (v) D[i].expiry = v + "T23:59:59.000Z"; }
 function ext(i, n) {
   var b = Math.max(Date.now(), new Date(D[i].expiry).getTime());
   D[i].expiry = new Date(b + n * 86400000).toISOString();
-  rD();
+  listD();
 }
-function saveD(i) { api("/api/admin/devices", "PUT", D[i]).then(function () { say("تم حفظ الجهاز"); }).catch(fail); }
+function saveD(i) {
+  var d = D[i], pl = [];
+  // a row without a link is dropped; a link written without http:// gets it
+  (d.playlists || []).forEach(function (p) {
+    var u = (p.url || "").trim();
+    if (!u) return;
+    if (u.indexOf("://") < 0) u = "http://" + u;
+    pl.push({ id: p.id || newId(), name: (p.name || "").trim(), url: u });
+  });
+  d.playlists = pl;
+  api("/api/admin/devices", "PUT", d).then(function () { say("تم حفظ الجهاز"); listD(); }).catch(fail);
+}
 
 function fc(k, lab, t) {
   return '<label>' + lab + '</label><input type="' + t + '" value="' + esc(C[k]) + '" oninput="C.' + k + '=this.value">';
