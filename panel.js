@@ -45,12 +45,19 @@ function api(p, m, b) {
 
 function shell() {
   $("app").innerHTML = '<div class="wrap"><h1>HALEB-TV</h1>' +
-    '<div id="login" class="card"><div class="seg" id="seg"></div><div id="pub"><label>اسم المستخدم</label><input class="mono" type="text" id="pu" autocomplete="username" autocapitalize="off" spellcheck="false"></div><label id="pwl"></label><input type="password" id="pw" autocomplete="off">' +
-    '<div class="row" style="margin-top:10px"><button class="btn pri" onclick="login()">دخول</button></div>' +
-    '<div id="lmsg" style="color:#c4121c;margin-top:8px"></div></div>' +
+    '<div id="login"><div class="lg-box">' +
+    '<div class="lg-brand"><svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff3b47"/><stop offset="1" stop-color="#8e0a12"/></linearGradient><linearGradient id="lg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c9d1e3"/></linearGradient></defs><rect x="10" y="10" width="100" height="100" rx="28" fill="url(#lg1)"/><path d="M24 74c10-30 48-46 76-38" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="4" stroke-linecap="round"/><path d="M38 34h12v20h20V34h12v52H70V65H50v21H38z" fill="url(#lg2)"/><path d="M88 84l12 7-12 7z" fill="#fff"/></svg><div class="lg-name"><span>HALEB</span> TV</div><div class="lg-sub">لوحة إدارة حلب سات</div></div>' +
+    '<div class="seg" id="seg"></div>' +
+    '<div id="pub"><label>اسم المستخدم</label><div class="lg-f"><span class="lg-i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span><input class="mono" type="text" id="pu" autocomplete="username" autocapitalize="off" spellcheck="false"></div></div>' +
+    '<label id="pwl"></label><div class="lg-f"><span class="lg-i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><input type="password" id="pw" autocomplete="current-password">' +
+    '<button type="button" class="lg-eye" id="pweye" onclick="pwEye()" aria-label="إظهار كلمة المرور"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>' +
+    '<div id="lmsg" class="lg-err"></div>' +
+    '<button class="lg-go" id="lgo" onclick="login()">تسجيل الدخول <span>←</span></button>' +
+    '<div class="lg-foot">إدارة خاصة · HALEB TV</div></div></div>' +
     '<div id="main" style="display:none"><div class="tabs" id="tabs"></div><div id="view"></div></div></div>' +
     '<div id="bulk" class="bulk"></div><div id="msg" class="msg"></div>';
   $("pw").addEventListener("keydown", function (e) { if (e.key == "Enter") login(); });
+  $("pu").addEventListener("keydown", function (e) { if (e.key == "Enter") $("pw").focus(); });
   loginRole(LR);
 }
 // the login box is one for both: the seller (the password of the panel) and a distributor (his own key)
@@ -61,10 +68,24 @@ function loginRole(r) {
   $("pwl").textContent = r == "dist" ? "كلمة المرور" : "كلمة مرور اللوحة";
   $("pub").style.display = r == "dist" ? "block" : "none";
   $("pw").type = "password";
+  $("pweye").classList.remove("on");
   $("pw").className = r == "dist" ? "mono" : "";
   $("pw").value = "";
   $("pu").value = "";
   $("lmsg").textContent = "";
+  lgBusy(false);
+}
+function pwEye() {
+  var e = $("pw"), show = e.type == "password";
+  e.type = show ? "text" : "password";
+  $("pweye").classList.toggle("on", show);
+}
+// the button of the login box while the panel is asked
+function lgBusy(b) {
+  var g = $("lgo");
+  if (!g) return;
+  g.disabled = b;
+  g.innerHTML = b ? '<i class="lg-spin"></i> جارٍ الدخول' : 'تسجيل الدخول <span>←</span>';
 }
 function tabs() {
   $("tabs").innerHTML = TABS.map(function (n, i) {
@@ -82,7 +103,10 @@ function logout() {
 }
 
 function login() {
+  $("lmsg").textContent = "";
   if (LR == "dist") { dvLogin(); return; }
+  if (!$("pw").value) { $("lmsg").textContent = "اكتب كلمة المرور"; return; }
+  lgBusy(true);
   ROLE = "admin";
   PW = $("pw").value;
   localStorage.setItem("pw", PW);
@@ -123,6 +147,7 @@ function loadAll() {
     $("login").style.display = "block";
     $("main").style.display = "none";
     $("lmsg").textContent = e && e.message === "401" ? "كلمة المرور غير صحيحة" : "تعذّر الاتصال بالخادم";
+    lgBusy(false);
   });
 }
 

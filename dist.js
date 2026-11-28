@@ -424,12 +424,13 @@ function dvLogin() {
     return String(n >= 0x06f0 ? n - 0x06f0 : n - 0x0660);
   }).trim();
   var u = dsUser($("pu").value);
-  if (!k) return;
+  if (!u || !k) { $("lmsg").textContent = "اكتب اسم المستخدم وكلمة المرور"; return; }
   if (!/^[\x20-\x7e]+$/.test(k) || u === null) { $("lmsg").textContent = "اسم المستخدم أو كلمة المرور غير صحيحة"; return; }
   ROLE = "dist";
   DK = k; DU = u;
   localStorage.setItem("dk", DK);
   if (DU) localStorage.setItem("du", DU); else localStorage.removeItem("du");
+  lgBusy(true);
   localStorage.setItem("role", "dist");
   distLoad();
 }
@@ -463,6 +464,7 @@ function distLoad(quiet) {
     $("login").style.display = "block";
     $("main").style.display = "none";
     $("lmsg").textContent = e && e.status === 401 ? "اسم المستخدم أو كلمة المرور غير صحيحة" : (e && e.code === "disabled" ? "حسابك معطّل، تواصل مع الإدارة" : "تعذّر الاتصال بالخادم");
+    lgBusy(false);
     return false;
   });
 }

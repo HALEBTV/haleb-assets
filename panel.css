@@ -82,3 +82,30 @@ body.hasbulk .msg{bottom:130px}
 .plus{color:#1f8f4a}
 .minus{color:#c4121c}
 .btn.go{text-decoration:none;display:inline-block}
+
+/* the login box: a page of its own over the panel */
+#login{position:fixed;inset:0;z-index:20;overflow-y:auto;padding:28px 16px;background:radial-gradient(120% 70% at 50% 0%,#3a0d16 0%,#141a2e 55%,#0b1020 100%);color:#e8ecf6}
+.lg-box{max-width:400px;margin:4vh auto 0;padding:26px 22px 18px;border-radius:26px;background:rgba(22,29,52,.86);border:1px solid rgba(255,255,255,.08);box-shadow:0 24px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)}
+.lg-brand{text-align:center;margin-bottom:18px}
+.lg-brand svg{display:block;margin:0 auto 10px;filter:drop-shadow(0 10px 24px rgba(220,30,45,.45))}
+.lg-name{font:800 28px/1.1 Arial,sans-serif;letter-spacing:2px;color:#fff;direction:ltr}
+.lg-name span{color:#ff2d3a}
+.lg-sub{margin-top:6px;font-size:13px;color:#8f9bbb}
+#login .seg{background:rgba(255,255,255,.05);padding:4px;border-radius:14px;margin-bottom:6px}
+#login .seg button{background:transparent;color:#aab4cf;border-radius:11px;transition:.2s}
+#login .seg button.on{background:linear-gradient(135deg,#e01e2b,#a30d18);color:#fff;box-shadow:0 6px 16px rgba(224,30,43,.35)}
+#login label{color:#aab4cf;margin:14px 4px 6px;font-size:13px}
+.lg-f{position:relative}
+.lg-f input{height:50px;padding:0 44px;border-radius:14px;border:1px solid #2b3658;background:#0d1326;color:#fff;font-size:16px;transition:.2s}
+.lg-f input:focus{outline:0;border-color:#e01e2b;box-shadow:0 0 0 3px rgba(224,30,43,.22)}
+.lg-i{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#7f8bab;pointer-events:none;display:flex}
+.lg-eye{position:absolute;left:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#7f8bab;padding:6px 8px;display:flex}
+.lg-eye.on{color:#ff4b56}
+.lg-f input:focus~.lg-eye{color:#c5cde2}
+.lg-err{min-height:20px;margin:10px 4px 0;color:#ff6b74;font-size:13px}
+.lg-go{width:100%;height:52px;margin-top:8px;border:0;border-radius:14px;background:linear-gradient(135deg,#e01e2b,#9e0c16);color:#fff;font-size:17px;font-weight:bold;box-shadow:0 10px 24px rgba(224,30,43,.35);display:flex;align-items:center;justify-content:center;gap:10px}
+.lg-go:active{transform:translateY(1px)}
+.lg-go span{font-size:19px}
+.lg-spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:lgs .8s linear infinite;display:inline-block}
+@keyframes lgs{to{transform:rotate(360deg)}}
+.lg-foot{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07);text-align:center;font-size:12px;color:#6d7899}
