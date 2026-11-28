@@ -4,6 +4,7 @@ var PW = localStorage.getItem("pw") || "";
 // The distributors' part of the page is in dist.js, which is loaded before this file.
 var ROLE = localStorage.getItem("role") == "dist" ? "dist" : "admin";
 var DK = localStorage.getItem("dk") || "";
+var DU = localStorage.getItem("du") || "";
 var LR = ROLE;
 var S = [], D = [], C = {}, MSG = "", Q = "", DQ = "", T = 1;
 var TABS = ["السيرفرات", "الأجهزة", "الموزعون", "الإعدادات"];
@@ -17,13 +18,13 @@ function fail(e) {
   var m = e && e.message, c = e && e.code;
   // what the Worker said ("points", "stopped", ...) has its own words (the table is in dist.js)
   if (c && typeof ERR !== "undefined" && ERR[c]) { say(ERR[c](e)); return; }
-  say(m === "401" ? (ROLE == "dist" ? "كلمة الدخول غير صحيحة" : "كلمة المرور غير صحيحة") : (/^\d+$/.test(m || "") ? "الخادم لم ينفّذ الطلب (" + m + ")، حاول بعد قليل" : "تعذّر الاتصال بالخادم"));
+  say(m === "401" ? (ROLE == "dist" ? "اسم المستخدم أو كلمة المرور غير صحيحة" : "كلمة المرور غير صحيحة") : (/^\d+$/.test(m || "") ? "الخادم لم ينفّذ الطلب (" + m + ")، حاول بعد قليل" : "تعذّر الاتصال بالخادم"));
 }
 // a request to the Worker; an answer that is not "ok" is an error: the number of the answer is the message, and
 // e.status, e.code (what the Worker called the problem) and e.data (its whole answer) say the rest
 function api(p, m, b) {
   var h = { "content-type": "application/json" };
-  if (ROLE == "dist") h["x-dist-key"] = DK; else h["x-admin-password"] = PW;
+  if (ROLE == "dist") { h["x-dist-key"] = DK; if (DU) h["x-dist-user"] = DU; } else h["x-admin-password"] = PW;
   return fetch(API + p, {
     method: m || "GET",
     headers: h,
@@ -44,7 +45,7 @@ function api(p, m, b) {
 
 function shell() {
   $("app").innerHTML = '<div class="wrap"><h1>HALEB-TV</h1>' +
-    '<div id="login" class="card"><div class="seg" id="seg"></div><label id="pwl"></label><input type="password" id="pw" autocomplete="off">' +
+    '<div id="login" class="card"><div class="seg" id="seg"></div><div id="pub"><label>اسم المستخدم</label><input class="mono" type="text" id="pu" autocomplete="username" autocapitalize="off" spellcheck="false"></div><label id="pwl"></label><input type="password" id="pw" autocomplete="off">' +
     '<div class="row" style="margin-top:10px"><button class="btn pri" onclick="login()">دخول</button></div>' +
     '<div id="lmsg" style="color:#c4121c;margin-top:8px"></div></div>' +
     '<div id="main" style="display:none"><div class="tabs" id="tabs"></div><div id="view"></div></div></div>' +
@@ -57,10 +58,12 @@ function loginRole(r) {
   LR = r;
   $("seg").innerHTML = '<button class="' + (r == "admin" ? "on" : "") + '" onclick="loginRole(\'admin\')">المدير</button>' +
     '<button class="' + (r == "dist" ? "on" : "") + '" onclick="loginRole(\'dist\')">موزّع</button>';
-  $("pwl").textContent = r == "dist" ? "كلمة الدخول (يعطيك إياها المدير)" : "كلمة مرور اللوحة";
-  $("pw").type = r == "dist" ? "text" : "password";
+  $("pwl").textContent = r == "dist" ? "كلمة المرور" : "كلمة مرور اللوحة";
+  $("pub").style.display = r == "dist" ? "block" : "none";
+  $("pw").type = "password";
   $("pw").className = r == "dist" ? "mono" : "";
   $("pw").value = "";
+  $("pu").value = "";
   $("lmsg").textContent = "";
 }
 function tabs() {
@@ -73,6 +76,7 @@ function draw() { if (T == 1) rS(); else if (T == 2) rD(); else if (T == 3) rDis
 function logout() {
   localStorage.removeItem("pw");
   localStorage.removeItem("dk");
+  localStorage.removeItem("du");
   localStorage.removeItem("role");
   location.reload();
 }
