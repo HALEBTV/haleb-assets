@@ -314,7 +314,7 @@ function metaOf(d) {
 
 function plBlock(d) {
   var k = "'" + d.mac + "'", h = "";
-  d.playlists.forEach(function (p, j) { h += plRow(p, k, j, "edPL", "delPL"); });
+  d.playlists.forEach(function (p, j) { h += plRow(p, k, j, "edPL", "delPL", plLock(p, d)); });
   return h;
 }
 function pickBox(d) {
@@ -519,7 +519,7 @@ function edPL(m, j, k, v) {
 function addPL(m, srv) {
   var d = find(m);
   if (!d) return;
-  d.playlists.push(srv ? { id: newId(), name: "", server: "", user: "", pass: "" } : { id: newId(), name: "", url: "" });
+  d.playlists.push(srv ? { id: newId(), name: "", server: "", user: "", pass: "", by: "admin" } : { id: newId(), name: "", url: "", by: "admin" });
   d._dirty = true;
   $("pl-" + kid(m)).innerHTML = plBlock(d);
 }
@@ -533,7 +533,7 @@ function delPL(m, j) {
 function saveD(m) {
   var d = find(m);
   if (!d || d._busy) return;
-  var pl = plClean(d.playlists);
+  var pl = plClean(d.playlists, d);
   if (!pl) return;
   d.playlists = pl;
   d._busy = true;

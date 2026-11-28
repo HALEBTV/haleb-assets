@@ -149,7 +149,7 @@ function dsCard(x) {
   var open = DSO[x.id], pf = DSP[x.id];
   return '<div class="card dst" id="ds-' + x.id + '"><div class="head">' +
     '<div class="logo">' + esc((x.name || "?").charAt(0)) + '</div>' +
-    '<div class="names"><b>' + esc(x.name) + '</b><small>' + (x.username ? 'المستخدم <span class="mono">' + esc(x.username) + '</span> · ' : '') + 'الرمز <span class="mono">' + esc(x.code) + '</span> · واتساب <span class="mono">+' + esc(x.phone) + '</span></small></div>' +
+    '<div class="names"><b>' + esc(x.name) + '</b><small>' + (x.username ? 'المستخدم <span class="mono">' + esc(x.username) + '</span> · ' : '') + 'واتساب <span class="mono">+' + esc(x.phone) + '</span></small></div>' +
     '<span class="pill' + (x.active ? "" : " off") + '">' + (x.active ? "فعّال" : "معطّل") + '</span></div>' +
     '<div class="meta"><b class="bal2">' + money(x.points) + '</b> ' + (x.points >= 3 && x.points <= 10 ? "نقاط" : "نقطة") + ' · أجهزته ' + x.devices + ' (فعّالة ' + x.live + ') · آخر دخول: ' + (x.last_login ? ago(x.last_login) : "لم يدخل بعد") + '</div>' +
     '<div class="acts"><button class="btn go" onclick="dsPts(' + k + ')">' + (pf ? "إخفاء ⌃" : "شحن / خصم نقاط") + '</button>' +
@@ -162,7 +162,6 @@ function dsCard(x) {
 function dsNewHtml() {
   return '<div class="card"><label>اسم الموزع</label><input type="text" id="dsn" autocomplete="off">' +
     '<label>رقم واتساب الموزع (دولي بدون + ولا صفر، مثل 905551234567)</label><input class="mono" type="text" id="dsp" inputmode="numeric" autocomplete="off">' +
-    '<label>رمز الموزع للزبائن في التطبيق (4 إلى 8 أرقام، اتركه فارغاً ليُولَّد)</label><input class="mono" type="text" id="dsc" inputmode="numeric" autocomplete="off">' +
     '<label>اسم المستخدم للدخول (3 إلى 32 حرفاً إنجليزياً أو رقماً أو . _ -)</label><input class="mono" type="text" id="dsu" autocomplete="off" autocapitalize="off" spellcheck="false">' +
     '<label>كلمة المرور (' + PWHINT + ')</label><input class="mono" type="text" id="dspw" autocomplete="off" autocapitalize="off" spellcheck="false">' +
     '<div class="row" style="margin-top:10px"><button class="btn pri" onclick="dsCreate()">إنشاء</button><button class="btn" onclick="dsNewForm()">إلغاء</button></div></div>';
@@ -173,7 +172,7 @@ function dsNewForm() {
   if (DSNEW && $("dsn")) $("dsn").focus();
 }
 function dsCreate() {
-  var name = $("dsn").value.trim(), phone = $("dsp").value.trim(), code = $("dsc").value.trim();
+  var name = $("dsn").value.trim(), phone = $("dsp").value.trim(), code = "";
   var pw = dsPass($("dspw").value), un = dsUser($("dsu").value);
   if (!name) { say("اكتب اسم الموزع"); return; }
   if (un === null) { say(ERR["bad username"]()); return; }
@@ -223,13 +222,12 @@ function phoneOf(p) {
 function dsCred(x, secret, code, isNew) {
   var name = x ? x.name : "", phone = x ? x.phone : "";
   var msg = "مرحباً " + name + "،\nهذه بيانات دخولك إلى لوحة حلب سات:\nالرابط: " + panelUrl() + (x && x.username ? "\nاسم المستخدم: " + x.username : "") + "\nكلمة المرور: " + secret +
-    "\nرمز الموزع (يكتبه الزبائن في التطبيق): " + code + "\nاحتفظ بكلمة المرور ولا تشاركها مع أحد.";
+    "\nاحتفظ بكلمة المرور ولا تشاركها مع أحد.";
   window.DSMSG = msg;
   modal('<h3 style="margin:0 0 6px">' + (isNew ? "تم إنشاء الموزع" : "بيانات دخول جديدة") + ': ' + esc(name) + '</h3>' +
     '<div class="meta">كلمة المرور تظهر هذه المرة فقط. انسخها أو أرسلها للموزع الآن.</div>' +
     (x && x.username ? '<div class="meta">اسم المستخدم: <b class="mono">' + esc(x.username) + '</b></div>' : '') +
     '<div class="secret" id="dssecret">' + esc(secret) + '</div>' +
-    '<div class="meta">رمز الموزع للزبائن: <b class="mono">' + esc(code) + '</b></div>' +
     '<div class="row" style="margin-top:12px"><button class="btn pri" onclick="copyText(window.DSMSG)">نسخ الرسالة</button>' +
     '<a class="btn go" id="dswa" target="_blank" rel="noopener" href="' + esc(waUrl(phone, msg)) + '" style="text-decoration:none">إرسال عبر واتساب</a>' +
     '<button class="btn" onclick="closeModal()">تم</button></div>');
@@ -292,7 +290,6 @@ function dsDetails(x) {
   var k = "'" + x.id + "'";
   return '<div class="det"><label>الاسم</label><input type="text" value="' + esc(x.name) + '" oninput="dsEd(' + k + ',\'name\',this.value)">' +
     '<label>رقم واتساب (دولي بدون + ولا صفر)</label><input class="mono" type="text" inputmode="numeric" value="' + esc(x.phone) + '" oninput="dsEd(' + k + ',\'phone\',this.value)">' +
-    '<label>رمز الموزع للزبائن (4 إلى 8 أرقام)</label><input class="mono" type="text" inputmode="numeric" value="' + esc(x.code) + '" oninput="dsEd(' + k + ',\'code\',this.value)">' +
     '<label>ملاحظة</label><input type="text" value="' + esc(x.note) + '" oninput="dsEd(' + k + ',\'note\',this.value)">' +
     '<div class="foot"><label class="sw"><input type="checkbox" ' + (x.active ? "checked" : "") + ' onchange="dsEd(' + k + ',\'active\',this.checked)"> مفعّل</label>' +
     '<span class="row"><button class="btn" onclick="dsTest(' + k + ')">اختبار الرقم</button><button class="btn x" onclick="dsDel(' + k + ')">حذف</button></span></div>' +
@@ -364,7 +361,24 @@ function plServers() {
   if (ROLE == "dist") return DVSRV;
   return (S || []).filter(function (s) { return s.visible !== false; });
 }
-function plRow(p, k, j, edFn, delFn) {
+// who locked a subscription against the one looking at it ("" when he may change it): the Worker keeps the same rule
+function plLock(p, d) {
+  if (!p || !p.by) return "";
+  if (ROLE == "dist") return p.by === "admin" ? "الإدارة" : "";
+  if (p.by === "admin" || !d || p.by !== d.dist) return "";
+  return (typeof distName == "function" && distName(p.by)) || "الموزع";
+}
+function plSrvName(id) {
+  var l = plServers();
+  for (var i = 0; i < l.length; i++) if (String(l[i].id) === String(id)) return l[i].nameAr || l[i].nameEn || "";
+  return "";
+}
+function plRow(p, k, j, edFn, delFn, lock) {
+  if (lock) {
+    var what = p.server != null ? (plSrvName(p.server) || "سيرفر") + (p.user ? ' · <span class="mono">' + esc(p.user) + '</span>' : "") : '<span class="mono">M3U</span>';
+    return '<div class="pl lk"><div class="row" style="flex-wrap:nowrap"><span class="lkic">🔒</span><div style="flex:1;min-width:0"><b>' + esc(p.name || plSrvName(p.server) || "اشتراك") + '</b>' +
+      '<small>' + what + ' · أضافه ' + esc(lock) + '، ولا يحذفه أو يعدّله غيره</small></div></div></div>';
+  }
   var x = '<button class="btn sm x" onclick="' + delFn + '(' + k + ',' + j + ')">✕</button>';
   var srv = p.server != null;
   var nm = '<input type="text" placeholder="اسم الاشتراك (يظهر للزبون' + (srv ? '، فارغ = اسم السيرفر' : '') + ')" value="' + esc(p.name) + '" oninput="' + edFn + '(' + k + ',' + j + ',\'name\',this.value)">';
@@ -386,9 +400,11 @@ function plRow(p, k, j, edFn, delFn) {
 }
 // what is sent: a link row needs its link, a server row its server, user name and password. A row that is half
 // filled is an error (null is returned and the reason is said), an empty one is dropped.
-function plClean(list) {
+function plClean(list, d) {
   var out = [], bad = "";
   list.forEach(function (p) {
+    // a locked one goes back as it is (the Worker keeps its own copy of it anyway)
+    if (plLock(p, d)) { out.push(p); return; }
     var name = (p.name || "").trim();
     if (p.server != null) {
       var u = (p.user || "").trim(), w = (p.pass || "").trim();
@@ -509,7 +525,6 @@ function dvHead() {
     '<button class="btn sm" onclick="logout()">خروج</button></div>' +
     '<div class="bal"><span>رصيدك</span><b id="dvbal">' + money(me.points) + '</b><span>' + (me.points >= 3 && me.points <= 10 ? "نقاط" : "نقطة") + '</span></div>' +
     '<div class="meta">' + dvPrices() + '</div>' +
-    '<div class="meta">رمز الموزع الذي يكتبه زبائنك في التطبيق: <b class="mono" id="dvcode">' + esc(me.code) + '</b></div>' +
     '<div class="meta">رقم واتساب الظاهر في الـQR لزبائنك: <span class="mono">+' + esc(me.phone) + '</span></div>';
 }
 function dvLogBox() {
@@ -617,7 +632,7 @@ function dvDetails(d) {
 }
 function dvPlBlock(d) {
   var k = "'" + d.mac + "'", h = "";
-  d.playlists.forEach(function (p, j) { h += plRow(p, k, j, "dvEdPL", "dvDelPL"); });
+  d.playlists.forEach(function (p, j) { h += plRow(p, k, j, "dvEdPL", "dvDelPL", plLock(p, d)); });
   return h;
 }
 function dvEd(m, k, v) {
@@ -633,7 +648,7 @@ function dvEdPL(m, j, k, v) {
 function dvAddPL(m, srv) {
   var d = dvFind(m);
   if (!d) return;
-  d.playlists.push(srv ? { id: newId(), name: "", server: "", user: "", pass: "" } : { id: newId(), name: "", url: "" });
+  d.playlists.push(srv ? { id: newId(), name: "", server: "", user: "", pass: "", by: DVM && DVM.id } : { id: newId(), name: "", url: "", by: DVM && DVM.id });
   d._dirty = true;
   $("dvpl-" + kid(m)).innerHTML = dvPlBlock(d);
 }
@@ -647,7 +662,7 @@ function dvDelPL(m, j) {
 function dvSave(m) {
   var d = dvFind(m);
   if (!d || d._busy) return;
-  var pl = plClean(d.playlists);
+  var pl = plClean(d.playlists, d);
   if (!pl) return;
   d.playlists = pl;
   d._busy = true;
