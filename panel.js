@@ -8,7 +8,7 @@ var DK = localStorage.getItem("dk") || "";
 var DU = localStorage.getItem("du") || "";
 var LR = ROLE;
 var S = [], D = [], C = {}, MSG = "", Q = "", DQ = "", T = 1;
-var TABS = ["السيرفرات", "الأجهزة", "الموزعون", "الإعدادات"];
+var TABS = ["السيرفرات", "الأجهزة", "الإخوة الموزعين", "الإعدادات"];
 var HN = ["الهوست الأساسي", "البديل الثاني", "البديل الثالث", "البديل الرابع", "البديل الخامس"];
 
 function $(id) { return document.getElementById(id); }
@@ -47,7 +47,7 @@ function api(p, m, b) {
 function shell() {
   $("app").innerHTML = '<div class="wrap"><h1>HALEB-TV</h1>' +
     '<div id="login"><div class="lg-box">' +
-    '<div class="lg-brand"><svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff3b47"/><stop offset="1" stop-color="#8e0a12"/></linearGradient><linearGradient id="lg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c9d1e3"/></linearGradient></defs><rect x="10" y="10" width="100" height="100" rx="28" fill="url(#lg1)"/><path d="M24 74c10-30 48-46 76-38" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="4" stroke-linecap="round"/><path d="M38 34h12v20h20V34h12v52H70V65H50v21H38z" fill="url(#lg2)"/><path d="M88 84l12 7-12 7z" fill="#fff"/></svg><div class="lg-name"><span>HALEB</span> TV</div><div class="lg-sub">لوحة إدارة حلب سات</div></div>' +
+    '<div class="lg-brand"><span class="lg-logo" role="img" aria-label="حلب سات"></span><div class="lg-name"><span>HALEB</span> TV</div><div class="lg-sub">لوحة إدارة حلب سات</div></div>' +
     '<div class="seg" id="seg"></div>' +
     '<div id="pub"><label>اسم المستخدم</label><div class="lg-f"><span class="lg-i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span><input class="mono" type="text" id="pu" autocomplete="username" autocapitalize="off" spellcheck="false"></div></div>' +
     '<label id="pwl"></label><div class="lg-f"><span class="lg-i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><input type="password" id="pw" autocomplete="current-password">' +
@@ -64,8 +64,8 @@ function shell() {
 // the login box is one for both: the seller (the password of the panel) and a distributor (his own key)
 function loginRole(r) {
   LR = r;
-  $("seg").innerHTML = '<button class="' + (r == "admin" ? "on" : "") + '" onclick="loginRole(\'admin\')">المدير</button>' +
-    '<button class="' + (r == "dist" ? "on" : "") + '" onclick="loginRole(\'dist\')">موزّع</button>';
+  $("seg").innerHTML = '<button class="' + (r == "admin" ? "on" : "") + '" onclick="loginRole(\'admin\')">إدارة التطبيق</button>' +
+    '<button class="' + (r == "dist" ? "on" : "") + '" onclick="loginRole(\'dist\')">الإخوة الموزعين</button>';
   $("pwl").textContent = r == "dist" ? "كلمة المرور" : "كلمة مرور اللوحة";
   $("pub").style.display = r == "dist" ? "block" : "none";
   $("pw").type = "password";
