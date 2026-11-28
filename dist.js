@@ -339,10 +339,62 @@ function dsTest(id) {
   if (x) window.open(waUrl(String(x.phone || "").replace(/\D/g, "")), "_blank");
 }
 
+// ---- a subscription of a device: an M3U link, or a server of the seller with a user name and a password ----
+// (shared by the seller's devices and the distributor's devices). A row of a server has "server" (its id, "" until one
+// is chosen), "user" and "pass"; the Worker makes the link from the server's host, so a distributor never sees it.
+function plServers() {
+  if (ROLE == "dist") return DVSRV;
+  return (S || []).filter(function (s) { return s.visible !== false; });
+}
+function plRow(p, k, j, edFn, delFn) {
+  var x = '<button class="btn sm x" onclick="' + delFn + '(' + k + ',' + j + ')">✕</button>';
+  var srv = p.server != null;
+  var nm = '<input type="text" placeholder="اسم الاشتراك (يظهر للزبون' + (srv ? '، فارغ = اسم السيرفر' : '') + ')" value="' + esc(p.name) + '" oninput="' + edFn + '(' + k + ',' + j + ',\'name\',this.value)">';
+  if (!srv) {
+    return '<div class="pl">' + nm +
+      '<div class="row" style="margin-top:6px;flex-wrap:nowrap"><input class="mono" type="text" placeholder="http://...get.php?username=...&password=..." value="' + esc(p.url) + '" oninput="' + edFn + '(' + k + ',' + j + ',\'url\',this.value)" style="flex:1;min-width:0">' + x + '</div></div>';
+  }
+  var ops = '<option value="">— اختر السيرفر —</option>', found = false;
+  plServers().forEach(function (s) {
+    var on = String(s.id) === String(p.server);
+    if (on) found = true;
+    ops += '<option value="' + esc(s.id) + '"' + (on ? " selected" : "") + '>' + esc(s.nameAr || s.nameEn || s.id) + (s.nameEn && s.nameAr ? " · " + esc(s.nameEn) : "") + '</option>';
+  });
+  if (p.server && !found) ops += '<option value="' + esc(p.server) + '" selected>سيرفر محذوف أو مخفي</option>';
+  return '<div class="pl"><div class="row" style="flex-wrap:nowrap"><select onchange="' + edFn + '(' + k + ',' + j + ',\'server\',this.value)" style="flex:1;min-width:0">' + ops + '</select>' + x + '</div>' +
+    '<div class="row" style="margin-top:6px;flex-wrap:nowrap"><input class="mono" type="text" placeholder="اسم المستخدم" value="' + esc(p.user) + '" autocapitalize="off" spellcheck="false" oninput="' + edFn + '(' + k + ',' + j + ',\'user\',this.value)" style="flex:1;min-width:0">' +
+    '<input class="mono" type="text" placeholder="كلمة المرور" value="' + esc(p.pass) + '" autocapitalize="off" spellcheck="false" oninput="' + edFn + '(' + k + ',' + j + ',\'pass\',this.value)" style="flex:1;min-width:0"></div>' +
+    '<div style="margin-top:6px">' + nm + '</div></div>';
+}
+// what is sent: a link row needs its link, a server row its server, user name and password. A row that is half
+// filled is an error (null is returned and the reason is said), an empty one is dropped.
+function plClean(list) {
+  var out = [], bad = "";
+  list.forEach(function (p) {
+    var name = (p.name || "").trim();
+    if (p.server != null) {
+      var u = (p.user || "").trim(), w = (p.pass || "").trim();
+      if (!p.server && !u && !w) return;
+      if (!p.server) { bad = bad || "اختر السيرفر لكل اشتراك"; return; }
+      if (!u || !w) { bad = bad || "اكتب اسم المستخدم وكلمة المرور لكل اشتراك"; return; }
+      if (/\s/.test(u + w)) { bad = bad || "اسم المستخدم وكلمة المرور بدون مسافات"; return; }
+      out.push({ id: p.id || newId(), name: name, server: String(p.server), user: u, pass: w });
+      return;
+    }
+    var l = (p.url || "").trim();
+    if (!l) return;
+    if (l.indexOf("://") < 0) l = "http://" + l;
+    out.push({ id: p.id || newId(), name: name, url: l });
+  });
+  if (bad) { say(bad); return null; }
+  return out;
+}
+var PLBTN = "+ اشتراك من سيرفر";
+
 // =====================================================================================================
 // the page of a distributor
 // =====================================================================================================
-var DVM = null, DVL = [], DVLOG = [], DVPLANS = [], DVF = "all", DVQ = "", DVSHOW = 50, DVLOAD = 0, DVADD = false, DVLG = false, DVBUSY = false;
+var DVSRV = [], DVM = null, DVL = [], DVLOG = [], DVPLANS = [], DVF = "all", DVQ = "", DVSHOW = 50, DVLOAD = 0, DVADD = false, DVLG = false, DVBUSY = false;
 
 function dvFind(m) {
   for (var i = 0; i < DVL.length; i++) if (DVL[i].mac === m) return DVL[i];
@@ -377,7 +429,7 @@ function dvMerge(list) {
 // the state of the distributor from the Worker (his points, his devices, his log); true when it was read
 function distLoad(quiet) {
   return api("/api/dist/state").then(function (r) {
-    DVM = r.me; DVPLANS = r.plans; DVLOG = r.log;
+    DVM = r.me; DVPLANS = r.plans; DVLOG = r.log; DVSRV = r.servers || [];
     dvMerge(r.devices);
     $("login").style.display = "none";
     $("main").style.display = "block";
@@ -538,16 +590,12 @@ function dvDetails(d) {
     '<label>ملاحظة (اسم الزبون)</label><input type="text" value="' + esc(d.note) + '" oninput="dvEd(' + k + ',\'note\',this.value)">' +
     '<label>اشتراكات M3U للزبون (تظهر له أول القائمة ويدخلها بضغطة واحدة)</label>' +
     '<div id="dvpl-' + kid(d.mac) + '">' + dvPlBlock(d) + '</div>' +
-    '<div class="row" style="margin-top:8px"><button class="btn" onclick="dvAddPL(' + k + ')">+ إضافة اشتراك M3U</button></div>' +
+    '<div class="row" style="margin-top:8px"><button class="btn go" onclick="dvAddPL(' + k + ',1)">' + PLBTN + '</button><button class="btn" onclick="dvAddPL(' + k + ')">+ رابط M3U</button></div>' +
     '<div class="foot"><span class="meta" style="margin:0">لا تستهلك النقاط</span><button class="btn pri" onclick="dvSave(' + k + ')"' + (d._busy ? " disabled" : "") + '>حفظ</button></div></div>';
 }
 function dvPlBlock(d) {
   var k = "'" + d.mac + "'", h = "";
-  d.playlists.forEach(function (p, j) {
-    h += '<div class="pl"><input type="text" placeholder="اسم الاشتراك (يظهر للزبون)" value="' + esc(p.name) + '" oninput="dvEdPL(' + k + ',' + j + ',\'name\',this.value)">' +
-      '<div class="row" style="margin-top:6px;flex-wrap:nowrap"><input class="mono" type="text" placeholder="http://...get.php?username=...&password=..." value="' + esc(p.url) + '" oninput="dvEdPL(' + k + ',' + j + ',\'url\',this.value)" style="flex:1;min-width:0">' +
-      '<button class="btn sm x" onclick="dvDelPL(' + k + ',' + j + ')">✕</button></div></div>';
-  });
+  d.playlists.forEach(function (p, j) { h += plRow(p, k, j, "dvEdPL", "dvDelPL"); });
   return h;
 }
 function dvEd(m, k, v) {
@@ -560,10 +608,10 @@ function dvEdPL(m, j, k, v) {
   if (!d || !d.playlists[j]) return;
   d.playlists[j][k] = v; d._dirty = true;
 }
-function dvAddPL(m) {
+function dvAddPL(m, srv) {
   var d = dvFind(m);
   if (!d) return;
-  d.playlists.push({ id: newId(), name: "", url: "" });
+  d.playlists.push(srv ? { id: newId(), name: "", server: "", user: "", pass: "" } : { id: newId(), name: "", url: "" });
   d._dirty = true;
   $("dvpl-" + kid(m)).innerHTML = dvPlBlock(d);
 }
@@ -577,14 +625,8 @@ function dvDelPL(m, j) {
 function dvSave(m) {
   var d = dvFind(m);
   if (!d || d._busy) return;
-  var pl = [];
-  // a row without a link is dropped; a link written without http:// gets it
-  d.playlists.forEach(function (p) {
-    var u = (p.url || "").trim();
-    if (!u) return;
-    if (u.indexOf("://") < 0) u = "http://" + u;
-    pl.push({ id: p.id || newId(), name: (p.name || "").trim(), url: u });
-  });
+  var pl = plClean(d.playlists);
+  if (!pl) return;
   d.playlists = pl;
   d._busy = true;
   api("/api/dist/device", "PUT", { mac: m, note: (d.note || "").trim(), playlists: pl }).then(function () {

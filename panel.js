@@ -285,11 +285,7 @@ function metaOf(d) {
 
 function plBlock(d) {
   var k = "'" + d.mac + "'", h = "";
-  d.playlists.forEach(function (p, j) {
-    h += '<div class="pl"><input type="text" placeholder="اسم الاشتراك (يظهر للزبون)" value="' + esc(p.name) + '" oninput="edPL(' + k + ',' + j + ',\'name\',this.value)">' +
-      '<div class="row" style="margin-top:6px;flex-wrap:nowrap"><input class="mono" type="text" placeholder="http://...get.php?username=...&password=..." value="' + esc(p.url) + '" oninput="edPL(' + k + ',' + j + ',\'url\',this.value)" style="flex:1;min-width:0">' +
-      '<button class="btn sm x" onclick="delPL(' + k + ',' + j + ')">✕</button></div></div>';
-  });
+  d.playlists.forEach(function (p, j) { h += plRow(p, k, j, "edPL", "delPL"); });
   return h;
 }
 function pickBox(d) {
@@ -322,7 +318,7 @@ function detailsOf(d) {
     (DSOK ? distPick(d) : "") +
     '<label>اشتراكات M3U (تظهر للزبون أول القائمة ويدخلها بضغطة واحدة)</label>' +
     '<div id="pl-' + kid(d.mac) + '">' + plBlock(d) + '</div>' +
-    '<div class="row" style="margin-top:8px"><button class="btn" onclick="addPL(' + k + ')">+ إضافة اشتراك M3U</button></div>' +
+    '<div class="row" style="margin-top:8px"><button class="btn go" onclick="addPL(' + k + ',1)">' + PLBTN + '</button><button class="btn" onclick="addPL(' + k + ')">+ رابط M3U</button></div>' +
     '<div class="foot"><label class="sw"><input type="checkbox" ' + (d.active !== false ? "checked" : "") + ' onchange="ed(' + k + ',\'active\',this.checked)"> مفعّل</label>' +
     '<span class="row"><button class="btn x" onclick="delD(' + k + ')">حذف نهائي</button><button class="btn pri" onclick="saveD(' + k + ')">حفظ</button></span></div></div>';
 }
@@ -491,10 +487,10 @@ function edPL(m, j, k, v) {
   if (!d || !d.playlists[j]) return;
   d.playlists[j][k] = v; d._dirty = true;
 }
-function addPL(m) {
+function addPL(m, srv) {
   var d = find(m);
   if (!d) return;
-  d.playlists.push({ id: newId(), name: "", url: "" });
+  d.playlists.push(srv ? { id: newId(), name: "", server: "", user: "", pass: "" } : { id: newId(), name: "", url: "" });
   d._dirty = true;
   $("pl-" + kid(m)).innerHTML = plBlock(d);
 }
@@ -508,14 +504,8 @@ function delPL(m, j) {
 function saveD(m) {
   var d = find(m);
   if (!d || d._busy) return;
-  var pl = [];
-  // a row without a link is dropped; a link written without http:// gets it
-  d.playlists.forEach(function (p) {
-    var u = (p.url || "").trim();
-    if (!u) return;
-    if (u.indexOf("://") < 0) u = "http://" + u;
-    pl.push({ id: p.id || newId(), name: (p.name || "").trim(), url: u });
-  });
+  var pl = plClean(d.playlists);
+  if (!pl) return;
   d.playlists = pl;
   d._busy = true;
   api("/api/admin/devices", "PUT", body(d, true)).then(function () {
