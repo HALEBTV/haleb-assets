@@ -364,9 +364,8 @@ function plServers() {
 // who locked a subscription against the one looking at it ("" when he may change it): the Worker keeps the same rule
 function plLock(p, d) {
   if (!p || !p.by) return "";
-  if (ROLE == "dist") return p.by === "admin" ? "الإدارة" : "";
-  if (p.by === "admin" || !d || p.by !== d.dist) return "";
-  return (typeof distName == "function" && distName(p.by)) || "الموزع";
+  // the seller may change or remove any subscription; a distributor not the seller's
+  return ROLE == "dist" && p.by === "admin" ? "الإدارة" : "";
 }
 function plSrvName(id) {
   var l = plServers();
