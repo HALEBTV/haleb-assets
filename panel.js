@@ -1,7 +1,12 @@
 var API = "https://haleb-panel.bdwa046.workers.dev";
 var PW = localStorage.getItem("pw") || "";
+// who is signed in: the seller ("admin", with the password of the panel) or a distributor ("dist", with his own key).
+// The distributors' part of the page is in dist.js, which is loaded before this file.
+var ROLE = localStorage.getItem("role") == "dist" ? "dist" : "admin";
+var DK = localStorage.getItem("dk") || "";
+var LR = ROLE;
 var S = [], D = [], C = {}, MSG = "", Q = "", DQ = "", T = 1;
-var TABS = ["السيرفرات", "الأجهزة", "الإعدادات"];
+var TABS = ["السيرفرات", "الأجهزة", "الموزعون", "الإعدادات"];
 var HN = ["الهوست الأساسي", "البديل الثاني", "البديل الثالث", "البديل الرابع", "البديل الخامس"];
 
 function $(id) { return document.getElementById(id); }
@@ -9,19 +14,29 @@ function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").repla
 function p2(n) { return n < 10 ? "0" + n : "" + n; }
 function say(t) { var e = $("msg"); e.textContent = t; e.style.display = "block"; clearTimeout(say.t); say.t = setTimeout(function () { e.style.display = "none"; }, 2800); }
 function fail(e) {
-  var m = e && e.message;
-  say(m === "401" ? "كلمة المرور غير صحيحة" : (/^\d+$/.test(m || "") ? "الخادم لم ينفّذ الطلب (" + m + ")، حاول بعد قليل" : "تعذّر الاتصال بالخادم"));
+  var m = e && e.message, c = e && e.code;
+  // what the Worker said ("points", "stopped", ...) has its own words (the table is in dist.js)
+  if (c && typeof ERR !== "undefined" && ERR[c]) { say(ERR[c](e)); return; }
+  say(m === "401" ? (ROLE == "dist" ? "مفتاح الدخول غير صحيح" : "كلمة المرور غير صحيحة") : (/^\d+$/.test(m || "") ? "الخادم لم ينفّذ الطلب (" + m + ")، حاول بعد قليل" : "تعذّر الاتصال بالخادم"));
 }
-// a request to the Worker; an answer that is not "ok" is an error (the number of the answer is the message)
+// a request to the Worker; an answer that is not "ok" is an error: the number of the answer is the message, and
+// e.status, e.code (what the Worker called the problem) and e.data (its whole answer) say the rest
 function api(p, m, b) {
+  var h = { "content-type": "application/json" };
+  if (ROLE == "dist") h["x-dist-key"] = DK; else h["x-admin-password"] = PW;
   return fetch(API + p, {
     method: m || "GET",
-    headers: { "content-type": "application/json", "x-admin-password": PW },
+    headers: h,
     body: b ? JSON.stringify(b) : undefined
   }).then(function (r) {
-    if (r.status == 401) throw new Error("401");
     return r.json().then(function (j) { return j; }, function () { return {}; }).then(function (j) {
-      if (!r.ok) throw new Error(String(r.status));
+      if (!r.ok) {
+        var e = new Error(String(r.status));
+        e.status = r.status;
+        e.code = j && typeof j.error === "string" ? j.error : "";
+        e.data = j && typeof j === "object" ? j : {};
+        throw e;
+      }
       return j;
     });
   });
@@ -29,11 +44,24 @@ function api(p, m, b) {
 
 function shell() {
   $("app").innerHTML = '<div class="wrap"><h1>HALEB-TV</h1>' +
-    '<div id="login" class="card"><label>كلمة مرور اللوحة</label><input type="password" id="pw">' +
+    '<div id="login" class="card"><div class="seg" id="seg"></div><label id="pwl"></label><input type="password" id="pw" autocomplete="off">' +
     '<div class="row" style="margin-top:10px"><button class="btn pri" onclick="login()">دخول</button></div>' +
     '<div id="lmsg" style="color:#c4121c;margin-top:8px"></div></div>' +
     '<div id="main" style="display:none"><div class="tabs" id="tabs"></div><div id="view"></div></div></div>' +
     '<div id="bulk" class="bulk"></div><div id="msg" class="msg"></div>';
+  $("pw").addEventListener("keydown", function (e) { if (e.key == "Enter") login(); });
+  loginRole(LR);
+}
+// the login box is one for both: the seller (the password of the panel) and a distributor (his own key)
+function loginRole(r) {
+  LR = r;
+  $("seg").innerHTML = '<button class="' + (r == "admin" ? "on" : "") + '" onclick="loginRole(\'admin\')">المدير</button>' +
+    '<button class="' + (r == "dist" ? "on" : "") + '" onclick="loginRole(\'dist\')">موزّع</button>';
+  $("pwl").textContent = r == "dist" ? "مفتاح الموزع (يعطيك إياه المدير)" : "كلمة مرور اللوحة";
+  $("pw").type = r == "dist" ? "text" : "password";
+  $("pw").className = r == "dist" ? "mono" : "";
+  $("pw").value = "";
+  $("lmsg").textContent = "";
 }
 function tabs() {
   $("tabs").innerHTML = TABS.map(function (n, i) {
@@ -41,18 +69,39 @@ function tabs() {
   }).join("");
 }
 function go(n) { T = n; tabs(); draw(); bulkBar(); }
-function draw() { if (T == 1) rS(); else if (T == 2) rD(); else rC(); }
-function logout() { localStorage.removeItem("pw"); location.reload(); }
+function draw() { if (T == 1) rS(); else if (T == 2) rD(); else if (T == 3) rDist(); else rC(); }
+function logout() {
+  localStorage.removeItem("pw");
+  localStorage.removeItem("dk");
+  localStorage.removeItem("role");
+  location.reload();
+}
 
-function login() { PW = $("pw").value; localStorage.setItem("pw", PW); loadAll(); }
+function login() {
+  if (LR == "dist") { dvLogin(); return; }
+  ROLE = "admin";
+  PW = $("pw").value;
+  localStorage.setItem("pw", PW);
+  localStorage.setItem("role", "admin");
+  loadAll();
+}
 function loadAll() {
-  Promise.all([api("/api/admin/servers"), api("/api/admin/devices"), api("/api/admin/config")]).then(function (r) {
+  // the distributors are a part of the panel that a Worker without them (or without its migration) does not have:
+  // when that list cannot be read, the rest of the panel works as it always did
+  var dl = api("/api/admin/distributors").then(function (l) { return l; }, function (e) {
+    if (e && e.message === "401") throw e;
+    return null;
+  });
+  Promise.all([api("/api/admin/servers"), api("/api/admin/devices"), api("/api/admin/config"), dl]).then(function (r) {
     S = r[0].map(function (s) {
       var h = (s.url || "").split(/[\s,;]+/).filter(Boolean);
       while (h.length < 3) h.push("");
       s.hosts = h;
       return s;
     });
+    DSL = [];
+    DSOK = r[3] != null;
+    if (r[3]) dsMerge(r[3]);
     D = [];
     mergeD(r[1]);
     C = r[2];
@@ -144,7 +193,7 @@ function saveS() {
 // A device is "active" (works), "stopped" (the seller stopped it), "expired" (its time is over) or "waiting"
 // (new, with no trial: it waits for the seller to activate it). The Worker decides the same way.
 var DAY = 86400000;
-var DF = "all", DS = "new", DSHOW = 50, DLOAD = 0, ADD = false, BUSY = false;
+var DF = "all", DS = "new", DSHOW = 50, DLOAD = 0, ADD = false, BUSY = false, DDF = "";
 var SEL = {};
 var CHIPS = [["all", "الكل"], ["active", "فعّال"], ["expired", "منتهٍ"], ["stopped", "موقوف"], ["waiting", "بانتظار التفعيل"], ["new", "جديد"]];
 var SORTS = [["new", "الأحدث تسجيلاً"], ["seen", "آخر ظهور"], ["exp", "الأقرب انتهاءً"], ["mac", "الماك"]];
@@ -174,6 +223,7 @@ function prep(d) {
   d.active = d.active !== false;
   d.key = d.key || "";
   d.note = d.note || "";
+  d.dist = d.dist || "";
   d.playlists = d.playlists || [];
   d._st = stOf(d);
   return d;
@@ -227,6 +277,8 @@ function metaOf(d) {
   p.push((rec ? '<span class="dot"></span>' : "") + "آخر ظهور: " + ago(d.last_seen));
   if (d._st == "stopped" && Date.parse(d.expiry) > Date.now()) p.push("متبقٍ " + daysLeft(d) + " يوم");
   if (d.playlists.length) p.push("M3U " + d.playlists.length);
+  // the seller sees whose device it is (a distributor's page has only his own devices, and no such field)
+  if (ROLE == "admin" && d.dist) p.push('<span class="tag dtag">' + esc(distName(d.dist) || "موزع محذوف") + '</span>');
   if (isNew(d)) p.push('<span class="tag">جديد</span>');
   return p.join(" · ");
 }
@@ -246,11 +298,28 @@ function pickBox(d) {
   LENGTHS.forEach(function (x) { h += '<button class="btn" onclick="addDays(' + k + ',' + x[0] + ')">' + x[1] + '</button>'; });
   return h + '</div>';
 }
+// who owns the device: the seller himself or one of the distributors (their points pay for the activations they make)
+function distPick(d) {
+  var k = "'" + d.mac + "'", known = false, o = "";
+  DSL.forEach(function (x) {
+    if (x.id === d.dist) known = true;
+    o += '<option value="' + esc(x.id) + '"' + (x.id === d.dist ? " selected" : "") + '>' + esc(x.name) + (x.active ? "" : " (معطّل)") + '</option>';
+  });
+  if (d.dist && !known) o += '<option value="' + esc(d.dist) + '" selected>موزع غير معروف</option>';
+  return '<label>الموزع صاحب الجهاز</label><select onchange="edDist(' + k + ',this.value)" style="width:100%">' +
+    '<option value=""' + (d.dist ? "" : " selected") + '>— بدون موزع (لي) —</option>' + o + '</select>';
+}
+function edDist(m, v) {
+  var d = find(m);
+  if (!d) return;
+  d.dist = v; d._distSet = true; d._dirty = true;
+}
 function detailsOf(d) {
   var k = "'" + d.mac + "'";
   return '<div class="det"><label>Device Key: ' + esc(d.key || "—") + '</label><label>سُجّل: ' + fmt(d.created) + '</label>' +
     '<label>انتهاء التفعيل</label><input type="date" value="' + esc((d.expiry || "").slice(0, 10)) + '" onchange="setExp(' + k + ',this.value)">' +
     '<label>ملاحظة (اسم الزبون)</label><input type="text" value="' + esc(d.note) + '" oninput="ed(' + k + ',\'note\',this.value)">' +
+    (DSOK ? distPick(d) : "") +
     '<label>اشتراكات M3U (تظهر للزبون أول القائمة ويدخلها بضغطة واحدة)</label>' +
     '<div id="pl-' + kid(d.mac) + '">' + plBlock(d) + '</div>' +
     '<div class="row" style="margin-top:8px"><button class="btn" onclick="addPL(' + k + ')">+ إضافة اشتراك M3U</button></div>' +
@@ -281,11 +350,13 @@ var CMP = {
   "mac": function (a, b) { return a.mac < b.mac ? -1 : (a.mac > b.mac ? 1 : 0); }
 };
 function inFilter(d) { return DF == "all" || (DF == "new" ? isNew(d) : d._st == DF); }
+// DDF: "" every device, "-" the seller's own, otherwise the id of one distributor
+function inOwner(d) { return DDF === "" || (DDF === "-" ? !d.dist : d.dist === DDF); }
 function viewD() {
   var q = DQ.trim().toLowerCase(), qn = q.replace(/[:\s-]/g, ""), out = [];
   for (var i = 0; i < D.length; i++) {
     var d = D[i];
-    if (!inFilter(d)) continue;
+    if (!inFilter(d) || !inOwner(d)) continue;
     if (q) {
       var names = d.playlists.map(function (p) { return p.name; }).join(" ");
       var hay = (d.mac + " " + d.mac.replace(/:/g, "") + " " + d.key + " " + d.note + " " + names).toLowerCase();
@@ -301,12 +372,19 @@ function counts() {
   return c;
 }
 
+// the devices of one distributor only (shown when there are distributors)
+function ownerSel() {
+  if (!DSOK || !DSL.length) return "";
+  var o = '<option value=""' + (DDF === "" ? " selected" : "") + '>كل الأجهزة</option><option value="-"' + (DDF === "-" ? " selected" : "") + '>أجهزتي بدون موزع</option>';
+  DSL.forEach(function (x) { o += '<option value="' + esc(x.id) + '"' + (DDF === x.id ? " selected" : "") + '>' + esc(x.name) + '</option>'; });
+  return '<select id="dd" onchange="DDF=this.value;DSHOW=50;listD()">' + o + '</select>';
+}
 function rD() {
   var so = SORTS.map(function (x) { return '<option value="' + x[0] + '"' + (DS == x[0] ? " selected" : "") + '>' + x[1] + '</option>'; }).join("");
   $("view").innerHTML = '<div class="bar"><input type="text" id="dq" placeholder="ابحث بالماك أو الاسم أو المفتاح..." value="' + esc(DQ) + '" oninput="DQ=this.value;DSHOW=50;listD()">' +
     '<button class="btn sm" id="dref" onclick="reloadD()" title="تحديث">↻</button></div>' +
     '<div class="row" style="margin-bottom:8px"><button class="btn" onclick="toggleAdd()">+ إضافة جهاز</button>' +
-    '<select id="ds" onchange="DS=this.value;DSHOW=50;listD()">' + so + '</select></div>' +
+    '<select id="ds" onchange="DS=this.value;DSHOW=50;listD()">' + so + '</select>' + ownerSel() + '</div>' +
     '<div id="dadd">' + (ADD ? addForm() : "") + '</div>' +
     '<div class="chips" id="dchips"></div><div id="dsel"></div><div id="dlist"></div><div id="dmore"></div>';
   listD();
@@ -346,6 +424,8 @@ document.addEventListener("visibilitychange", function () {
 function body(d, withLists) {
   var o = { mac: d.mac, expiry: d.expiry, active: d.active !== false, note: (d.note || "").trim() };
   if (withLists) o.playlists = d.playlists;
+  // the owner is sent only when the seller changed it in the details: "" gives the device back to him
+  if (d._distSet) o.dist = d.dist || null;
   return o;
 }
 // one change of a device, saved at once; when the server does not accept it, the change is taken back
@@ -440,7 +520,10 @@ function saveD(m) {
   d._busy = true;
   api("/api/admin/devices", "PUT", body(d, true)).then(function () {
     d._busy = false; d._dirty = false; d._open = false; d._st = stOf(d);
+    var moved = d._distSet;
+    d._distSet = false;
     listD(); say("تم حفظ الجهاز");
+    if (moved) dsReload(true);   // the count of devices of each distributor
   }).catch(function (e) { d._busy = false; listD(); fail(e); });
 }
 function delD(m) {
@@ -563,6 +646,8 @@ function rC() {
     '<label>رسالة لكل المستخدمين</label><input type="text" value="' + esc(MSG) + '" oninput="MSG=this.value">' +
     fc("trialDays", "أيام التجربة للجهاز الجديد", "number", "0 = بلا تجربة: الجهاز الجديد يظهر في «الأجهزة» بحالة «بانتظار التفعيل» ولا يعمل حتى تفعّله أنت.") +
     fc("speedTestUrl", "رابط ملف اختبار السرعة (اختياري)", "text") +
+    (C.contactPhone !== undefined ? fc("contactPhone", "رقم واتساب الإدارة (يفتحه رمز QR في التطبيق)", "text",
+      "بالصيغة الدولية بدون + ولا صفر في أولها، مثل 905374566687. الزبون الذي ليس له موزع يتواصل مع هذا الرقم، وزبائن كل موزع يتواصلون مع رقم موزعهم.") : "") +
     '<div class="row" style="margin-top:12px"><button class="btn pri" onclick="saveC()">حفظ الإعدادات</button><button class="btn" onclick="logout()">خروج</button></div></div>';
 }
 function saveC() {
@@ -571,8 +656,10 @@ function saveC() {
     version: C.version, updateUrl: C.updateUrl, trialDays: C.trialDays, speedTestUrl: C.speedTestUrl,
     message: JSON.stringify({ m: MSG, matches: [] })
   };
+  // sent only when the Worker has told this panel the number (an older Worker does not know it)
+  if (C.contactPhone !== undefined) body.contactPhone = String(C.contactPhone || "").trim();
   api("/api/admin/config", "PUT", body).then(function () { say("تم الحفظ"); }).catch(fail);
 }
 
 shell();
-if (PW) loadAll();
+if (ROLE == "dist") { if (DK) distLoad(); } else if (PW) loadAll();

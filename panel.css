@@ -61,3 +61,24 @@ body.hasbulk{padding-bottom:130px}
 .msg{z-index:10}
 body.hasbulk .msg{bottom:130px}
 .dev .mac{text-align:right}
+/* login: the seller or a distributor */
+.seg{display:flex;gap:6px;margin-bottom:8px}
+.seg button{flex:1;padding:10px 4px;border:0;border-radius:12px;background:#dfe7f7;color:#1b2440;font-size:14px}
+.seg button.on{background:#c4121c;color:#fff}
+/* the distributors */
+.btn small{display:block;font-size:11px;opacity:.8;margin-top:2px}
+.tag.dtag{background:#1b2440}
+.bal2{font-size:18px;color:#c4121c}
+.card.hdr{background:#fff}
+.bal{display:flex;align-items:baseline;gap:8px;margin:10px 4px 4px;color:#5b6a8f}
+.bal b{font-size:36px;color:#c4121c;line-height:1}
+.modal{position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(15,22,45,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal .card{background:#fff;max-width:520px;width:100%;max-height:90vh;overflow:auto;margin:0}
+.secret{font-family:monospace;direction:ltr;text-align:center;font-size:24px;letter-spacing:1px;background:#eef2fb;border:2px dashed #c4121c;border-radius:14px;padding:14px 8px;margin:12px 0;user-select:all;word-break:break-all}
+.lgrow{display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-bottom:1px solid #cdd8f0}
+.lgrow small{display:block;color:#5b6a8f;font-size:12px;margin-top:2px}
+.lgn{text-align:left;white-space:nowrap}
+.lgn span{font-size:18px;font-weight:bold}
+.plus{color:#1f8f4a}
+.minus{color:#c4121c}
+.btn.go{text-decoration:none;display:inline-block}
