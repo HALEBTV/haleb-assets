@@ -1,4 +1,6 @@
-var API = "https://haleb-panel.bdwa046.workers.dev";
+// opened from the Worker's own address (panel.halepsat.org): the API is on the same address; opened from GitHub Pages
+// (the old link) or from a file: the Worker's address
+var API = /(^|\.)github\.io$/.test(location.hostname) || location.protocol == "file:" ? "https://haleb-panel.bdwa046.workers.dev" : "";
 var PW = localStorage.getItem("pw") || "";
 // who is signed in: the seller ("admin", with the password of the panel) or a distributor ("dist", with his own key).
 // The distributors' part of the page is in dist.js, which is loaded before this file.
