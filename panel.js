@@ -17,7 +17,7 @@ function fail(e) {
   var m = e && e.message, c = e && e.code;
   // what the Worker said ("points", "stopped", ...) has its own words (the table is in dist.js)
   if (c && typeof ERR !== "undefined" && ERR[c]) { say(ERR[c](e)); return; }
-  say(m === "401" ? (ROLE == "dist" ? "مفتاح الدخول غير صحيح" : "كلمة المرور غير صحيحة") : (/^\d+$/.test(m || "") ? "الخادم لم ينفّذ الطلب (" + m + ")، حاول بعد قليل" : "تعذّر الاتصال بالخادم"));
+  say(m === "401" ? (ROLE == "dist" ? "كلمة الدخول غير صحيحة" : "كلمة المرور غير صحيحة") : (/^\d+$/.test(m || "") ? "الخادم لم ينفّذ الطلب (" + m + ")، حاول بعد قليل" : "تعذّر الاتصال بالخادم"));
 }
 // a request to the Worker; an answer that is not "ok" is an error: the number of the answer is the message, and
 // e.status, e.code (what the Worker called the problem) and e.data (its whole answer) say the rest
@@ -57,7 +57,7 @@ function loginRole(r) {
   LR = r;
   $("seg").innerHTML = '<button class="' + (r == "admin" ? "on" : "") + '" onclick="loginRole(\'admin\')">المدير</button>' +
     '<button class="' + (r == "dist" ? "on" : "") + '" onclick="loginRole(\'dist\')">موزّع</button>';
-  $("pwl").textContent = r == "dist" ? "مفتاح الموزع (يعطيك إياه المدير)" : "كلمة مرور اللوحة";
+  $("pwl").textContent = r == "dist" ? "كلمة الدخول (يعطيك إياها المدير)" : "كلمة مرور اللوحة";
   $("pw").type = r == "dist" ? "text" : "password";
   $("pw").className = r == "dist" ? "mono" : "";
   $("pw").value = "";

@@ -7,7 +7,7 @@
 
 // ---- what the Worker says, in words ------------------------------------------------------------------------
 var ERR = {
-  "unauthorized": function () { return ROLE == "dist" ? "مفتاح الدخول غير صحيح" : "كلمة المرور غير صحيحة"; },
+  "unauthorized": function () { return ROLE == "dist" ? "كلمة الدخول غير صحيحة" : "كلمة المرور غير صحيحة"; },
   "disabled": function () { return "حسابك معطّل، تواصل مع الإدارة"; },
   "points": function (e) { var d = e.data || {}; return "رصيدك لا يكفي: لديك " + pts(d.points) + " ونحتاج " + pts(d.need); },
   "not enough": function (e) { return "رصيد الموزع لا يكفي للخصم (عنده " + ((e.data || {}).points) + ")"; },
@@ -24,6 +24,8 @@ var ERR = {
   "bad phone": function () { return "رقم واتساب غير صحيح: اكتبه بالصيغة الدولية بدون + ولا صفر، مثل 905551234567"; },
   "bad code": function () { return "الرمز يجب أن يكون من 4 إلى 8 أرقام"; },
   "code taken": function () { return "هذا الرمز مستخدم عند موزع آخر"; },
+  "bad password": function () { return "كلمة المرور يجب أن تكون من 4 إلى 64 حرفاً إنجليزياً أو رقماً أو رمزاً، بدون مسافات ولا حروف عربية"; },
+  "password taken": function () { return "كلمة المرور هذه مستخدمة عند موزع آخر، اختر غيرها"; },
   "bad points": function () { return "عدد النقاط غير صحيح"; },
   "bad dist": function () { return "الموزع غير موجود"; }
 };
@@ -159,6 +161,7 @@ function dsNewHtml() {
   return '<div class="card"><label>اسم الموزع</label><input type="text" id="dsn" autocomplete="off">' +
     '<label>رقم واتساب الموزع (دولي بدون + ولا صفر، مثل 905551234567)</label><input class="mono" type="text" id="dsp" inputmode="numeric" autocomplete="off">' +
     '<label>رمز الموزع للزبائن في التطبيق (4 إلى 8 أرقام، اتركه فارغاً ليُولَّد)</label><input class="mono" type="text" id="dsc" inputmode="numeric" autocomplete="off">' +
+    '<label>كلمة الدخول للموزع (' + PWHINT + '. اتركها فارغة ليُولَّد مفتاح تلقائياً)</label><input class="mono" type="text" id="dspw" autocomplete="off" autocapitalize="off" spellcheck="false">' +
     '<div class="row" style="margin-top:10px"><button class="btn pri" onclick="dsCreate()">إنشاء</button><button class="btn" onclick="dsNewForm()">إلغاء</button></div></div>';
 }
 function dsNewForm() {
@@ -168,17 +171,31 @@ function dsNewForm() {
 }
 function dsCreate() {
   var name = $("dsn").value.trim(), phone = $("dsp").value.trim(), code = $("dsc").value.trim();
+  var pw = dsPass($("dspw").value);
   if (!name) { say("اكتب اسم الموزع"); return; }
+  if (pw === null) { say(ERR["bad password"]()); return; }
   if (!phone) { say("اكتب رقم واتساب الموزع"); return; }
   if (DSBUSY) return;
   DSBUSY = true;
-  api("/api/admin/distributors", "PUT", { name: name, phone: phone, code: code, active: true }).then(function (r) {
+  api("/api/admin/distributors", "PUT", { name: name, phone: phone, code: code, active: true, password: pw }).then(function (r) {
     DSBUSY = false; DSNEW = false;
     // the key exists nowhere but in this answer: it is shown first, before anything else (the list) can fail
     dsCred({ name: name, phone: phoneOf(phone) }, r.secret, r.code, true);
     dsReload(true);
   }).catch(function (e) { DSBUSY = false; fail(e); });
 }
+// a password the seller chose: Arabic digits are read as digits; 4 to 64 Latin letters, digits or symbols, no spaces
+// (the Worker checks the same). "" when nothing was typed, null when what was typed cannot be used.
+function dsPass(v) {
+  var t = String(v || "").replace(/[٠-٩۰-۹]/g, function (c) {
+    var n = c.charCodeAt(0);
+    return String(n >= 0x06f0 ? n - 0x06f0 : n - 0x0660);
+  }).trim();
+  if (!t) return "";
+  return /^[\x21-\x7e]{4,64}$/.test(t) ? t : null;
+}
+var PWHINT = "4 إلى 64 حرفاً إنجليزياً أو رقماً أو رمزاً، بدون مسافات. الأحرف الكبيرة والصغيرة مختلفة";
+
 // a number the way wa.me wants it, for the link that is made in the page (the Worker keeps its own clean copy)
 function phoneOf(p) {
   var t = String(p || "").replace(/[٠-٩۰-۹]/g, function (c) {
@@ -191,11 +208,11 @@ function phoneOf(p) {
 // the secret of a distributor is shown once: here, to copy or to send to him on WhatsApp
 function dsCred(x, secret, code, isNew) {
   var name = x ? x.name : "", phone = x ? x.phone : "";
-  var msg = "مرحباً " + name + "،\nهذه بيانات دخولك إلى لوحة حلب سات:\nالرابط: " + panelUrl() + "\nمفتاح الدخول: " + secret +
-    "\nرمز الموزع (يكتبه الزبائن في التطبيق): " + code + "\nاحتفظ بالمفتاح ولا تشاركه مع أحد.";
+  var msg = "مرحباً " + name + "،\nهذه بيانات دخولك إلى لوحة حلب سات:\nالرابط: " + panelUrl() + "\nكلمة الدخول: " + secret +
+    "\nرمز الموزع (يكتبه الزبائن في التطبيق): " + code + "\nاحتفظ بكلمة الدخول ولا تشاركها مع أحد.";
   window.DSMSG = msg;
-  modal('<h3 style="margin:0 0 6px">' + (isNew ? "تم إنشاء الموزع" : "مفتاح دخول جديد") + ': ' + esc(name) + '</h3>' +
-    '<div class="meta">مفتاح الدخول يظهر هذه المرة فقط. انسخه أو أرسله للموزع الآن.</div>' +
+  modal('<h3 style="margin:0 0 6px">' + (isNew ? "تم إنشاء الموزع" : "كلمة دخول جديدة") + ': ' + esc(name) + '</h3>' +
+    '<div class="meta">كلمة الدخول تظهر هذه المرة فقط. انسخها أو أرسلها للموزع الآن.</div>' +
     '<div class="secret" id="dssecret">' + esc(secret) + '</div>' +
     '<div class="meta">رمز الموزع للزبائن: <b class="mono">' + esc(code) + '</b></div>' +
     '<div class="row" style="margin-top:12px"><button class="btn pri" onclick="copyText(window.DSMSG)">نسخ الرسالة</button>' +
@@ -264,7 +281,9 @@ function dsDetails(x) {
     '<label>ملاحظة</label><input type="text" value="' + esc(x.note) + '" oninput="dsEd(' + k + ',\'note\',this.value)">' +
     '<div class="foot"><label class="sw"><input type="checkbox" ' + (x.active ? "checked" : "") + ' onchange="dsEd(' + k + ',\'active\',this.checked)"> مفعّل</label>' +
     '<span class="row"><button class="btn" onclick="dsTest(' + k + ')">اختبار الرقم</button><button class="btn x" onclick="dsDel(' + k + ')">حذف</button></span></div>' +
-    '<div class="row" style="margin-top:8px"><button class="btn" onclick="dsReset(' + k + ')">مفتاح دخول جديد</button><button class="btn pri" onclick="dsSave(' + k + ')">حفظ</button></div></div>';
+    '<div class="row" style="margin-top:8px"><button class="btn" onclick="dsReset(' + k + ')">مفتاح عشوائي جديد</button><button class="btn pri" onclick="dsSave(' + k + ')">حفظ</button></div>' +
+    '<label>كلمة دخول جديدة للموزع (' + PWHINT + ')</label><input class="mono" type="text" id="dspw-' + x.id + '" autocomplete="off" autocapitalize="off" spellcheck="false">' +
+    '<div class="row" style="margin-top:8px"><button class="btn go" onclick="dsSetPw(' + k + ')">تعيين كلمة الدخول</button></div></div>';
 }
 function dsBody(x, extra) {
   var o = { id: x.id, name: (x.name || "").trim(), phone: String(x.phone || "").trim(), code: String(x.code || "").trim(), active: x.active !== false, note: (x.note || "").trim() };
@@ -286,6 +305,19 @@ function dsReset(id) {
   if (!confirm("إنشاء مفتاح دخول جديد للموزع " + x.name + " ؟\nالمفتاح القديم يتوقف فوراً.")) return;
   DSBUSY = true;
   api("/api/admin/distributors", "PUT", dsBody(x, { resetSecret: true })).then(function (r) {
+    DSBUSY = false; x._dirty = false;
+    dsCred(x, r.secret, r.code, false);
+    dsReload(true);
+  }).catch(function (e) { DSBUSY = false; fail(e); });
+}
+function dsSetPw(id) {
+  var x = dsFind(id), e = $("dspw-" + id);
+  if (!x || !e || DSBUSY) return;
+  var pw = dsPass(e.value);
+  if (!pw) { say(pw === null ? ERR["bad password"]() : "اكتب كلمة الدخول الجديدة"); return; }
+  if (!confirm("تعيين كلمة دخول جديدة للموزع " + x.name + " ؟\nكلمة الدخول القديمة تتوقف فوراً.")) return;
+  DSBUSY = true;
+  api("/api/admin/distributors", "PUT", dsBody(x, { password: pw })).then(function (r) {
     DSBUSY = false; x._dirty = false;
     dsCred(x, r.secret, r.code, false);
     dsReload(true);
@@ -317,8 +349,12 @@ function dvFind(m) {
   return null;
 }
 function dvLogin() {
-  var k = $("pw").value.trim();
+  var k = $("pw").value.replace(/[٠-٩۰-۹]/g, function (c) {
+    var n = c.charCodeAt(0);
+    return String(n >= 0x06f0 ? n - 0x06f0 : n - 0x0660);
+  }).trim();
   if (!k) return;
+  if (!/^[\x20-\x7e]+$/.test(k)) { $("lmsg").textContent = "كلمة الدخول غير صحيحة"; return; }
   ROLE = "dist";
   DK = k;
   localStorage.setItem("dk", DK);
@@ -354,7 +390,7 @@ function distLoad(quiet) {
     if (e && e.status === 401) localStorage.removeItem("dk");
     $("login").style.display = "block";
     $("main").style.display = "none";
-    $("lmsg").textContent = e && e.status === 401 ? "مفتاح الدخول غير صحيح" : (e && e.code === "disabled" ? "حسابك معطّل، تواصل مع الإدارة" : "تعذّر الاتصال بالخادم");
+    $("lmsg").textContent = e && e.status === 401 ? "كلمة الدخول غير صحيحة" : (e && e.code === "disabled" ? "حسابك معطّل، تواصل مع الإدارة" : "تعذّر الاتصال بالخادم");
     return false;
   });
 }
